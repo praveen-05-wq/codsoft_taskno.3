@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Image Captioning AI Demo</title>
+<style>
+ 
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #4a90e2, #9013fe);
+    color: #fff;
+    min-height: 100vh;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 2rem;
+  }
+  h1 {
+    font-weight: 900;
+    font-size: 2.5rem;
+    margin-bottom: 0.2em;
+    text-shadow: 0 0 10px rgba(255 255 255 / 0.7);
+  }
+  #upload-label {
+    margin-top: 1rem;
+    padding: 0.8rem 1.5rem;
+    background-color: #7b46ff;
+    border-radius: 40px;
+    display: inline-block;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: background-color 0.3s ease;
+    box-shadow: 0 0 20px #8a56ff88;
+  }
+  #upload-label:hover {
+    background-color: #5a28d5;
+    box-shadow: 0 0 30px #5a28d5cc;
+  }
+  input[type="file"] {
+    display: none;
+  }
+  #image-preview {
+    margin-top: 2rem;
+    max-width: 100%;
+    max-height: 350px;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+    object-fit: contain;
+    background: #fff;
+  }
+  #caption-container {
+    margin-top: 1.8rem;
+    background: rgba(0,0,0, 0.6);
+    padding: 1rem 1.6rem;
+    max-width: 640px;
+    border-radius: 12px;
+    font-size: 1.3rem;
+    line-height: 1.4;
+    box-shadow: 0 0 20px rgba(255 255 255 / 0.3);
+    min-height: 60px;
+    user-select: text;
+  }
+  #loading {
+    margin-top: 1.2rem;
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: #ffd700;
+    text-shadow: 0 0 10px #ffd700bb;
+  }
+  footer {
+    margin-top: auto;
+    font-size: 0.9rem;
+    color: #ddd;
+    user-select: none;
+  }
+  a {
+    color: #a3bffa;
+    text-decoration: underline;
+  }
+</style>
+</head>
+<body>
+  <h1>Image Captioning AI Demo</h1>
+  <label id="upload-label" for="image-upload">Choose Image</label>
+  <input type="file" id="image-upload" accept="image/*" />
+  <img id="image-preview" alt="Uploaded image preview" hidden />
+  <div id="loading" hidden>Generating caption, please wait...</div>
+  <div id="caption-container" aria-live="polite"></div>
+  <footer>Powered by <a href="https://huggingface.co/spaces/OFA-Sys/OFA" target="_blank" rel="noopener noreferrer">Hugging Face OFA Model</a></footer>
+
+<script>
+  const inputFile = document.getElementById('image-upload');
+  const imagePreview = document.getElementById('image-preview');
+  const captionContainer = document.getElementById('caption-container');
+  const loadingText = document.getElementById('loading');
+
+  
+  const HF_API_URL = "https://api-inference.huggingface.co/models/OFA-Sys/OFA";
+ 
+  inputFile.addEventListener('change', async (event) => {
+    if (!event.target.files || event.target.files.length === 0) {
+      return;
+    }
+
+    const file = event.target.files[0];
+    const reader = new FileReader();
+
+    captionContainer.textContent = "";
+    loadingText.hidden = true;
+
+    reader.onload = async function(e) {
+      imagePreview.src = e.target.result;
+      imagePreview.hidden = false;
+      captionContainer.textContent = "";
+      loadingText.hidden = false;
+
+      try {
+       
+        const base64 = e.target.result.split(',')[1];
+
+        
+        const response = await fetch(HF_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            
+           
+          },
+          body: JSON.stringify({
+            inputs: e.target.result
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error from API: ${response.statusText} (Code: ${response.status})`);
+        }
+
+        const data = await response.json();
+
+       
+        if (Array.isArray(data) && data.length > 0 && data[0].generated_text) {
+          captionContainer.textContent = data[0].generated_text;
+        } else if (typeof data === 'string') {
+          
+          captionContainer.textContent = data;
+        } else {
+          captionContainer.textContent = "Sorry, no caption generated.";
+        }
+      } catch (error) {
+        captionContainer.textContent = "Error generating caption: " + error.message;
+      } finally {
+        loadingText.hidden = true;
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+</script>
+</body>
+</html>
+
